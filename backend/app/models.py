@@ -1,13 +1,18 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, create_engine
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
+from passlib.context import CryptContext
+
+
 # SQLite setup
-DATABASE_URL = "sqlite:///./test.db" 
+DATABASE_URL = "sqlite:///./livesync.db" 
 
 # SQLAlchemy setup
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+#hashing password
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 Base = declarative_base()
 
@@ -19,7 +24,6 @@ def get_db():
     finally:
         db.close()
 
-
 # SQLAlchemy database models
 
 
@@ -27,9 +31,9 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
+    name = Column(String, index=True, nullable=False)
     email = Column(String, unique=True, index=True)
-
+    password = Column(String)
     #relationship to documents created by this user
     documents = relationship("Document", back_populates="creator")
     #relationship to sessions the user is part of
@@ -53,7 +57,7 @@ class CollaborationSession(Base):
     __tablename__ = "collaboration_sessions"
     
     id = Column(Integer, primary_key=True, index=True)
-    #key that links session to the document thats being edited
+    #key that links session to the d# Hashing password before savingocument thats being edited
     document_id = Column(Integer, ForeignKey("documents.id"))
     #relationship showing which document is being worked on
     document = relationship("Document", back_populates="sessions")
@@ -65,3 +69,27 @@ class SessionUser(Base):
     
     session_id = Column(Integer, ForeignKey("collaboration_sessions.id"), primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+
+
+def verify_password(plain_password: str, hashed_password: str):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_admin_user(db: Session):
+    hashed_password = pwd_context.hash("CB9tu83t13")
+    admin_exists = db.query(User).filter(User.id == 1).first()
+    if not admin_exists:
+        admin_user = User(
+            id=1,
+            name="Admin",
+            email="alexandru356.c@gmail.com",
+            password= hashed_password
+        )
+        db.add(admin_user)
+        db.commit()
+        db.refresh(admin_user)
+        print("Admin user created with ID 1")
+    else:
+        print("Admin user already exists")
+
+def setup_db(db: Session):
+    create_admin_user(db)

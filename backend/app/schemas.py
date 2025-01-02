@@ -7,7 +7,7 @@ class UserBase(BaseModel):
     email: str
 
 class UserCreate(UserBase):
-    pass
+    password: str
 
 class UserResponse(UserBase):
     id: int
@@ -25,7 +25,19 @@ class DocumentCreate(DocumentBase):
 
 class DocumentResponse(DocumentBase):
     id: int
-    creator_id: int
-
+    creator : UserResponse
+    
     class Config:
         orm_mode = True  
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class Login(BaseModel):
+    email: str
+    password: str
+
+class SignUp(BaseModel):
+    email: str
+    password: str
