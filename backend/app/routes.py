@@ -8,7 +8,7 @@ from typing import List
 
 user_router = APIRouter()
 
-#fix get all users route
+
 @user_router.get("/", response_model=List[UserResponse])
 async def get_users(db: Session = Depends(get_db)):
     users = db.query(User).all()
@@ -86,10 +86,12 @@ async def update_document(document_id: int,document: DocumentCreate ,db: Session
     return document_model
 
 @document_router.delete("/{document_id}", response_model=None)
-async def delete_document(document_id: int, db: Session = Depends(get_db)):
+async def delete_document(document_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     document_model = db.query(Document).filter(Document.id == document_id).first()
     if document_model is None:
         raise HTTPException(status_code=404, detail = f"Document ID {document_id} : Does not exist")
+    if document_model.creator_id != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Permission denied")
     db.delete(document_model)
     db.commit()
 

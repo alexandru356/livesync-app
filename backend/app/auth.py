@@ -7,9 +7,13 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from models import User, get_db
 from schemas import SignUp, Token
+from dotenv import load_dotenv
+import os
 
-SECRET_KEY = "d10e9b956ba7f3221d129e6e3dfed8c4bba6fd048783c4d387eda99ba6222828"
-ALGORITHM = "HS256"
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
 
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl='auth/token')
 bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
@@ -47,7 +51,7 @@ def authenticate_user(email: str, password: str,db: Session):
     return user
 
 def create_access_token(email: str, user_id: int, expires_delta: timedelta):
-    encode = {'sub': user_id, 'email': email}
+    encode = {'sub': str(user_id), 'email': email}
     expires = datetime.now(timezone.utc) + expires_delta
     encode.update({'exp': expires})
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -60,13 +64,18 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int = payload.get("sub")
+        user_id: int = int(payload.get("sub"))
         email: str = payload.get('email')
-        user = db.query(User).filter(User.id == user_id).first()
+        if user_id is None or email is None:
+            raise credentials_exception
+        user = db.query(User).filter(User.id == user_id, User.email == email).first()
         if user_id is None or email is None:
             raise credentials_exception
         return user
-    except jwt.PyJWTError:
+    except jwt.PyJWTError as e:
+        print(f"JWT error: {e}")
         raise credentials_exception
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
 
 
