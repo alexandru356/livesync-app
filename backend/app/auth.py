@@ -47,7 +47,7 @@ def authenticate_user(email: str, password: str,db: Session):
     return user
 
 def create_access_token(email: str, user_id: int, expires_delta: timedelta):
-    encode = {'sub': email, 'id': user_id}
+    encode = {'sub': user_id, 'email': email}
     expires = datetime.now(timezone.utc) + expires_delta
     encode.update({'exp': expires})
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -62,9 +62,10 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: int = payload.get("sub")
         email: str = payload.get('email')
+        user = db.query(User).filter(User.id == user_id).first()
         if user_id is None or email is None:
             raise credentials_exception
-        return {'email': email, 'id': user_id}
+        return user
     except jwt.PyJWTError:
         raise credentials_exception
 

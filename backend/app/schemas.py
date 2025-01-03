@@ -3,11 +3,11 @@ from typing import List, Optional
 
 # User Pydantic schema
 class UserBase(BaseModel):
-    name: str
     email: str
+    password: str
 
 class UserCreate(UserBase):
-    password: str
+    pass
 
 class UserResponse(UserBase):
     id: int

@@ -26,7 +26,6 @@ async def update_user(user_id: int, user: UserCreate, db: Session = Depends(get_
     user_model = db.query(User).filter(User.id == user_id).first()
     if user_model is None:
         raise HTTPException(status_code=404, detail = f"ID {user_id} : Does not exist")
-    user_model.name = user.name
     user_model.email = user.email
     db.add(user_model)
     db.commit()
@@ -106,7 +105,7 @@ auth_router = APIRouter()
 @auth_router.post("/signup", response_model=UserResponse)
 async def sign_up(user: UserCreate, db: Session = Depends(get_db)):
     hashed_password = bcrypt_context.hash(user.password)
-    db_user = User(name=user.name, email=user.email, password=hashed_password)
+    db_user = User(email=user.email, password=hashed_password)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)

@@ -1,7 +1,7 @@
 from typing import Annotated
 from fastapi import FastAPI,Depends
 from models import Base, engine, get_db
-from routes import user_router, document_router, auth_router
+from routes import user_router, document_router
 import auth
 
 
@@ -9,7 +9,7 @@ import auth
 app = FastAPI()
 
 #SQLite setup
-DATABASE_URL = "sqlite:///./test.db" 
+DATABASE_URL = "sqlite:///./livesync.db" 
 
 # SQLAlchemy setup
 Base.metadata.create_all(bind=engine)
