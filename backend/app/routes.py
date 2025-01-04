@@ -1,11 +1,13 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect, Request
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from models import User, Document, get_db
 from auth import create_access_token, get_current_user, bcrypt_context, authenticate_user
 from schemas import UserCreate, UserResponse, DocumentCreate, DocumentResponse, Token, Login
+from websocket import ConnectionManager
 from typing import List
-
+import auth
+import logging
 user_router = APIRouter()
 
 
@@ -125,3 +127,46 @@ async def sign_in(login: Login, db: Session = Depends(get_db)):
 @auth_router.get("/users/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+manager = ConnectionManager()
+logger = logging.getLogger("uvicorn")
+@document_router.websocket("/ws/{document_id}")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    document_id: int,
+    db: Session = Depends(get_db)
+):
+    # Retrieve token from the query parameters directly from the WebSocket headers
+    token = websocket.query_params.get("token")
+    
+    if not token:
+        await websocket.close(code=1008)  # Close with an error code
+        raise HTTPException(status_code=400, detail="Token not provided in query parameters")
+
+    # Get the current user using the provided token
+    current_user = get_current_user(db, token)
+    
+    logger.info(f"WebSocket connection attempt for document_id {document_id} by user {current_user.email}")
+    
+    # Accept WebSocket connection
+    await websocket.accept()
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+
+            # Handle document updates
+            document = db.query(Document).filter(Document.id == document_id).first()
+            if not document:
+                await websocket.send_text("Error: document not found")
+                continue
+            document.content = data
+            db.add(document)
+            db.commit()
+
+            # Broadcast the updated document to all connected clients
+            await websocket.send_text(f"Updated document {document_id} with data: {data}")
+    except WebSocketDisconnect:
+        logger.info(f"User {current_user.email} disconnected from document {document_id}")
+        # Perform any cleanup if needed
