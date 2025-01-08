@@ -1,5 +1,6 @@
 from typing import Annotated
 from fastapi import FastAPI,Depends
+from fastapi.middleware.cors import CORSMiddleware
 from models import Base, engine, get_db
 from routes import user_router, document_router
 import auth
@@ -7,6 +8,16 @@ import auth
 
 # FastAPI app initialization, database setup, and app start
 app = FastAPI()
+
+
+app.add_middleware(
+     CORSMiddleware,
+    allow_origins=["http://localhost:5173"], 
+    allow_credentials=True,
+    allow_methods=["*"],  
+    allow_headers=["*"],  
+)
+
 
 #SQLite setup
 DATABASE_URL = "sqlite:///./livesync.db" 

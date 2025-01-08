@@ -8,6 +8,8 @@ from websocket import ConnectionManager
 from typing import List
 import auth
 import logging
+
+
 user_router = APIRouter()
 
 
@@ -170,3 +172,5 @@ async def websocket_endpoint(
     except WebSocketDisconnect:
         logger.info(f"User {current_user.email} disconnected from document {document_id}")
         # Perform any cleanup if needed
+
+
